@@ -1,0 +1,149 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Community {
+  id        Int      @id @default(autoincrement())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users      User[]
+  questions  Question[]
+
+  @@map("communities")
+}
+
+model User {
+  id          Int      @id @default(autoincrement())
+  email       String   @unique
+  password    String
+  name        String
+  bio         String?
+  traitVector Json?    @map("trait_vector")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  communityId Int       @map("community_id")
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  
+  // User's answers to questions
+  answers     Answer[]
+  
+  // Likes given and received
+  likesGiven  Like[]    @relation("LikeFrom")
+  likesReceived Like[]  @relation("LikeTo")
+  
+  // Matches where this user is userA or userB
+  matchesAsUserA Match[] @relation("MatchUserA")
+  matchesAsUserB Match[] @relation("MatchUserB")
+  
+  // Messages sent and received
+  messagesSent     Message[] @relation("MessageSender")
+  messagesReceived Message[] @relation("MessageReceiver")
+
+  @@map("users")
+}
+
+model Question {
+  id        Int      @id @default(autoincrement())
+  text      String
+  type      QuestionType
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  communityId Int       @map("community_id")
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  
+  // Answers to this question
+  answers     Answer[]
+
+  @@map("questions")
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  SCALE
+}
+
+model Answer {
+  id        Int      @id @default(autoincrement())
+  value     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  userId     Int      @map("user_id")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  questionId Int      @map("question_id")
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+  @@map("answers")
+}
+
+model Like {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  fromUserId Int     @map("from_user_id")
+  fromUser   User    @relation("LikeFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  
+  toUserId   Int     @map("to_user_id")
+  toUser     User    @relation("LikeTo", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@unique([fromUserId, toUserId])
+  @@map("likes")
+}
+
+model Match {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  userAId   Int      @map("user_a_id")
+  userA     User     @relation("MatchUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  
+  userBId   Int      @map("user_b_id")
+  userB     User     @relation("MatchUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  
+  // Messages between these users
+  messages  Message[]
+
+  @@unique([userAId, userBId])
+  @@map("matches")
+}
+
+model Message {
+  id        Int      @id @default(autoincrement())
+  text      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  senderId  Int      @map("sender_id")
+  sender    User     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  
+  receiverId Int     @map("receiver_id")
+  receiver   User    @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  
+  // Match this message belongs to
+  matchId   Int      @map("match_id")
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+} 
