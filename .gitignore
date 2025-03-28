@@ -15,6 +15,7 @@ out/
 .env.test
 .env.production
 .env.local
+.env.example
 .env.*.local
 
 # TypeScript cache
